@@ -232,35 +232,67 @@ AC_SUBST([crypto_LIBS])
 #
 # Check for optional libraries
 #
-PKG_CHECK_MODULES([audit], [audit >= 2.7.7],
-[AC_DEFINE([HAVE_LINUX_AUDIT], [1], [Linux Audit API available])
-AC_CHECK_DECLS([audit_encode_nv_string], [], [], [[#include<libaudit.h>]])
-libaudit_summary="system-wide; $audit_LIBS"],
-[AC_MSG_NOTICE([libaudit development files not found! Linux Audit support wille be turned OFF])
-libaudit_summary="not found"]
-)
+AC_ARG_ENABLE([audit],
+              [AS_HELP_STRING([--enable-audit], [Enables Linux Audit support if available (default=yes)])],
+              [use_audit=$enableval], [use_audit=yes])
 
-PKG_CHECK_MODULES([seccomp], [libseccomp >= 2.0.0],
-[AC_DEFINE([HAVE_SECCOMP], [1], [seccomp API usable])
-libseccomp_summary="system-wide; $seccomp_LIBS"],
-[AC_MSG_NOTICE([libseccomp development files not found! Seccomp support will be turned OFF])
-libseccomp_summary="not found"]
-)
+if test "x$use_audit" = xyes; then
+  PKG_CHECK_MODULES([audit], [audit >= 2.7.7],
+  [AC_DEFINE([HAVE_LINUX_AUDIT], [1], [Linux Audit API available])
+  AC_CHECK_DECLS([audit_encode_nv_string], [], [], [[#include<libaudit.h>]])
+  libaudit_summary="system-wide; $audit_LIBS"],
+  [AC_MSG_NOTICE([libaudit development files not found! Linux Audit support wille be turned OFF])
+  libaudit_summary="not found"]
+  )
+else
+  libaudit_summary="not enabled"
+fi
 
-PKG_CHECK_MODULES([libcapng], [libcap-ng >= 0.7.0],
-[AC_DEFINE([HAVE_LIBCAPNG], [1], [cap-ng API usable])
-libcap_ng_summary="system-wide; $libcapng_LIBS"],
-[AC_MSG_NOTICE([libcap-ng development files not found! Support for POSIX 1003.1e capabilities will be turned OFF])
-libcap_ng_summary="not found"]
-)
+AC_ARG_ENABLE([seccomp],
+              [AS_HELP_STRING([--enable-seccomp], [Enables Seccomp support if available (default=yes)])],
+              [use_seccomp=$enableval], [use_seccomp=yes])
 
-PKG_CHECK_MODULES([umockdev], [umockdev-1.0 >= 0.8.0],
-[AC_DEFINE([HAVE_UMOCKDEV], [1], [umockdev API usable])
-umockdev_summary="system-wide; $umockdev_LIBS"
-umockdev_available=yes],
-[AC_MSG_NOTICE([umockdev development files not found! umockdev device manager won't be available])
-umockdev_summary="not found"]
-)
+if test "x$use_seccomp" = xyes; then
+  PKG_CHECK_MODULES([seccomp], [libseccomp >= 2.0.0],
+  [AC_DEFINE([HAVE_SECCOMP], [1], [seccomp API usable])
+  libseccomp_summary="system-wide; $seccomp_LIBS"],
+  [AC_MSG_NOTICE([libseccomp development files not found! Seccomp support will be turned OFF])
+  libseccomp_summary="not found"]
+  )
+else
+  libseccomp_summary="not enabled"
+fi
+
+AC_ARG_ENABLE([libcapng],
+              [AS_HELP_STRING([--enable-libcapng], [Enables POSIX 1003.1e capability support if available (default=yes)])],
+              [use_libcapng=$enableval], [use_libcapng=yes])
+
+if test "x$use_libcapng" = xyes; then
+  PKG_CHECK_MODULES([libcapng], [libcap-ng >= 0.7.0],
+  [AC_DEFINE([HAVE_LIBCAPNG], [1], [cap-ng API usable])
+  libcap_ng_summary="system-wide; $libcapng_LIBS"],
+  [AC_MSG_NOTICE([libcap-ng development files not found! Support for POSIX 1003.1e capabilities will be turned OFF])
+  libcap_ng_summary="not found"]
+  )
+else
+  libcap_ng_summary="not enabled"
+fi
+
+AC_ARG_ENABLE([umockdev],
+              [AS_HELP_STRING([--enable-umockdev], [Enables Seccomp support if available (default=yes)])],
+              [use_umockdev=$enableval], [use_umockdev=yes])
+
+if test "x$use_umockdev" = xyes; then
+  PKG_CHECK_MODULES([umockdev], [umockdev-1.0 >= 0.8.0],
+  [AC_DEFINE([HAVE_UMOCKDEV], [1], [umockdev API usable])
+  umockdev_summary="system-wide; $umockdev_LIBS"
+  umockdev_available=yes],
+  [AC_MSG_NOTICE([umockdev development files not found! umockdev device manager won't be available])
+  umockdev_summary="not found"]
+  )
+else
+  umockdev_summary="not enabled"
+fi
 
 PKG_CHECK_MODULES([protobuf], [protobuf >= 2.5.0],
 [protobuf_summary="system-wide; $protobuf_CFLAGS $protobuf_LIBS"],
@@ -325,17 +357,17 @@ AC_LANG_POP
 CPPFLAGS=$SAVE_CPPFLAGS
 
 #
-# GLib D-Bus
+# GDBus
 #
 AC_ARG_WITH([dbus], AC_HELP_STRING([--with-dbus], [Build the DBus Bridge service]), [], [with_dbus=yes])
 if test "x$with_dbus" = xyes; then
   #
   # Check for required D-Bus modules
   #
-  PKG_CHECK_MODULES([dbus], [dbus-1 dbus-glib-1 >= 0.100 gio-2.0],
-  [AC_DEFINE([HAVE_DBUS], [1], [Required GLib DBus API available])
+  PKG_CHECK_MODULES([dbus], [dbus-1 gio-2.0],
+  [AC_DEFINE([HAVE_DBUS], [1], [Required GDBus API available])
   dbus_summary="system-wide; $dbus_CFLAGS $dbus_LIBS"],
-  [AC_MSG_FAILURE([Required D-Bus modules (dbus-1, dbus-glib-1, gio-2.0) not found!])]
+  [AC_MSG_FAILURE([Required D-Bus modules (dbus-1, gio-2.0) not found!])]
   )
 
   #
@@ -702,7 +734,7 @@ echo "  libcap-ng: $libcap_ng_summary"
 echo "   protobuf: $protobuf_summary"
 echo "      Catch: $catch_summary"
 echo "      PEGTL: $pegtl_summary; version <= 2.6.0: $have_pegtl_lte_260"
-echo " GLib D-Bus: $dbus_summary"
+echo "      GDBus: $dbus_summary"
 echo "   umockdev: $umockdev_summary"
 echo
 echo "## Directories"

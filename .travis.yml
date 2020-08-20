@@ -73,6 +73,10 @@ matrix:
           packages: ['libgcrypt-dev']
       env: CONFIGURE_ARGS=--with-crypto-library=gcrypt
 
+    - os: linux
+      compiler: gcc
+      env: CONFIGURE_ARGS=--without-ldap
+
 before_install:
 - sudo apt-get -qq update
 - sudo apt-get install -y ansible
@@ -99,17 +103,19 @@ install:
 - cd src/Tests/LDAP/ansible
 - ansible-playbook -i ./hosts -u root --connection=local playbook.yml
 - popd
+- pushd /tmp
 - wget https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/protobuf-cpp-3.11.3.tar.gz
 - tar -xzvf protobuf-cpp-3.11.3.tar.gz
 - CXXB=${CXX}
 - CXX=g++
 - pushd protobuf-3.11.3 && ./configure && make -j$(nproc) && sudo make install && sudo ldconfig && popd
 - CXX=${CXXB}
+- popd
 before_script:
 - ./autogen.sh
 - mkdir build && cd build
 - echo ${COMPILER_CXX} ${COMPILER_C}
-- CXX=${COMPILER_CXX} CC=${COMPILER_C} ../configure --enable-werror --disable-silent-rules --with-bundled-catch --with-bundled-pegtl --with-ldap $CONFIGURE_ARGS
+- CXX=${COMPILER_CXX} CC=${COMPILER_C} ../configure --enable-werror --disable-silent-rules --with-bundled-catch --with-bundled-pegtl --with-ldap --enable-full-test-suite $CONFIGURE_ARGS
 script:
 - test $TRAVIS_BRANCH != coverity_scan || exit 0
 - if test -n "$MAKE_ARGS"; then make $MAKE_ARGS; else make all; VERBOSE=1 make check; fi
@@ -119,7 +125,7 @@ addons:
   coverity_scan:
     project:
       name: USBGuard/usbguard
-    notification_email: dnk1618@gmail.com
+    notification_email: rsroka@redhat.com
     build_command: make
     branch_pattern: coverity_scan
 

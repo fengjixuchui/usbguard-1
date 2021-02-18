@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <sys/poll.h>
 #include <sys/eventfd.h>
+#include <sys/types.h>
 
 namespace usbguard
 {
@@ -80,6 +81,7 @@ namespace usbguard
     registerHandler<IPC::removeRule>(&IPCClientPrivate::handleMethodResponse);
     registerHandler<IPC::applyDevicePolicy>(&IPCClientPrivate::handleMethodResponse);
     registerHandler<IPC::listDevices>(&IPCClientPrivate::handleMethodResponse);
+    registerHandler<IPC::checkIPCPermissions>(&IPCClientPrivate::handleMethodResponse);
     registerHandler<IPC::Exception>(&IPCClientPrivate::handleException);
     registerHandler<IPC::DevicePresenceChangedSignal>(&IPCClientPrivate::handleDevicePresenceChangedSignal);
     registerHandler<IPC::DevicePolicyChangedSignal>(&IPCClientPrivate::handleDevicePolicyChangedSignal);
@@ -142,16 +144,20 @@ namespace usbguard
     USBGUARD_LOG(Trace) << "_qb_conn=" << _qb_conn
       << " _qb_fd=" << _qb_fd;
 
+    std::unique_lock<std::mutex> disconnect_lock(_disconnect_mutex);
+
     if (_qb_conn != nullptr && _qb_fd >= 0) {
       qb_loop_poll_del(_qb_loop, _qb_fd);
       qb_ipcc_disconnect(_qb_conn);
       _qb_conn = nullptr;
       _qb_fd = -1;
+      disconnect_lock.unlock();
       stop(do_wait);
       USBGUARD_LOG(Trace) << "Signaling IPCDisconnected";
       _p_instance.IPCDisconnected(/*exception_initiated=*/true, exception);
     }
     else if (_thread.running()) {
+      disconnect_lock.unlock();
       stop(do_wait);
     }
   }
@@ -437,6 +443,21 @@ namespace usbguard
     }
 
     return devices;
+  }
+
+  bool IPCClientPrivate::checkIPCPermissions(const IPCServer::AccessControl::Section& section, const IPCServer::AccessControl::Privilege& privilege)
+  {
+    IPC::checkIPCPermissions message_out;
+    message_out.mutable_request()->set_uid(getuid());
+    message_out.mutable_request()->set_gid(getgid());
+    message_out.mutable_request()->set_section(
+        IPCServer::AccessControl::sectionToString(section)
+    );
+    message_out.mutable_request()->set_privilege(
+        IPCServer::AccessControl::privilegeToString(privilege)
+    );
+    auto message_in = qbIPCSendRecvMessage(message_out);
+    return message_in->response().permit();
   }
 
   void IPCClientPrivate::handleMethodResponse(IPC::MessagePointer& message_in, IPC::MessagePointer& message_out)

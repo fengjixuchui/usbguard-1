@@ -16,6 +16,7 @@
 ##
 ## Authors: Daniel Kopecek <dkopecek@redhat.com>
 ##          Jiri Vymazal   <jvymazal@redhat.com>
+##          Attila Lakatos <alakatos@redhat.com>
 ##
 SUBDIRS=src/Tests/
 
@@ -166,6 +167,7 @@ libusbguard_la_CPPFLAGS=\
 	-I$(top_srcdir)/src/Library/public \
 	-I$(top_builddir)/src/Library/IPC \
 	${BOOST_CPPFLAGS} \
+	${PTHREAD_CPPFLAGS} \
 	@qb_CFLAGS@ \
 	@protobuf_CFLAGS@ \
 	@crypto_CFLAGS@ \
@@ -184,7 +186,9 @@ libusbguard_la_LIBADD=\
 	@pegtl_LIBS@ \
 	@atomic_LIBS@ \
 	@umockdev_LIBS@ \
-	${BOOST_IOSTREAMS_LIB}
+	${BOOST_IOSTREAMS_LIB} \
+	${PTHREAD_CFLAGS} \
+	${PTHREAD_LIBS}
 
 EXTRA_DIST+=\
 	src/Library/IPC/Devices.proto \
@@ -395,6 +399,8 @@ usbguard_SOURCES=\
 	src/CLI/usbguard-block-device.cpp \
 	src/CLI/usbguard-reject-device.hpp \
 	src/CLI/usbguard-reject-device.cpp \
+	src/CLI/usbguard-apply-device-policy.hpp \
+	src/CLI/usbguard-apply-device-policy.cpp \
 	src/CLI/usbguard-list-rules.hpp \
 	src/CLI/usbguard-list-rules.cpp \
 	src/CLI/usbguard-append-rule.hpp \
